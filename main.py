@@ -1,4 +1,4 @@
 import cprotect
 
 
-cprotect.protect('1.c')
+cprotect.protect('1.cpp')

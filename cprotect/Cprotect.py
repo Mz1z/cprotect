@@ -95,7 +95,7 @@ def _locatefunction(_fin):
 	try:
 		index1 = _fin.index('{')
 	except ValueError:
-		print('\nend!')
+		print('\n> 函数查找结束!\n')
 		return None
 	# 查找配对的大括号的位置
 	x = 1
@@ -131,8 +131,59 @@ def _preprocess(fcontent):
 			i += 1
 	return new_fcontent
 
+# 将所有的字符串进行加密
+def _protect_strings(fcontent):
+	# 加密一个字符串
+	#    smc解密的代码
+	decrypt_code = '''
+int decry(){
+	printf("smc \\n");
+	return 1;
+}
+int Mz111111111 = decry();
+	'''
+	def _encryptstr(_str):
+		return _str
+	
+	# 通过有限自动机的方式查找字符串	
+	new_strings = {}
+	i = 0
+	new_fcontent = ''
+	length = len(fcontent)
+	while i < length:
+		if fcontent[i] == '"':
+			i += 1
+			_str = ""
+			while fcontent[i] != '"':
+				_str += fcontent[i]
+				i += 1
+			i += 1
+			print(f"> 获取到字符串: {_str}")
+			# 生成一个替换的假名
+			_r = '_' + str(random.randint(100000, 999999));
+			new_fcontent += _r   # 用假名替换原来的字符串 
+			new_strings[_r] = _str # 并收集字符串和对应的假名
+		else:
+			new_fcontent += fcontent[i]
+			i += 1
+	# 将假名字符串添加到文件开头
+	# 尝试加密
+	for name, _str in new_strings.items():
+		print(f"> 加密: {name} -> {_str} -> {_encryptstr(_str)}")
+		new_fcontent = f'char* {name}="{_encryptstr(_str)}"; \n' + new_fcontent
+
+	new_fcontent += decrypt_code
+	return new_fcontent
+
+
 
 # 保护某一文件
+'''
+处理流程
+1. 预处理
+2. 保护函数调用
+3. 加密字符串
+'''
 def protect(fin_path, fout_path=None):
 	if fout_path is None:    # 生成默认输出路径
 		if 'cpp' == fin_path[-3:]:
@@ -283,7 +334,7 @@ def protect(fin_path, fout_path=None):
 
 			args_in_names = [arg.name for arg in args_in]
 			# 生成新的函数的函数体
-			if _ret_t[0] != 'void':
+			if _ret_t[0].strip() != 'void':
 				new_function = _ret_t[0] + ' '+str(_r)+'('+new_args+')'+ \
 					'{\n    ' + \
 						'return '+func_name+f'({",".join(args_in_names)});\n' + \
@@ -303,6 +354,9 @@ def protect(fin_path, fout_path=None):
 		_fout += (_code)
 	
 	_fout = "\n".join(all_new_functions_def) + "\n"+_fout+"\n" + "\n".join(all_new_functions)      # 将新函数声明提前 并 添加新函数
+	
+	# 加密字符串
+	_fout = _protect_strings(_fout)
 	open(fout_path, 'w', encoding='utf-8').write(_fout)
 	
 	
