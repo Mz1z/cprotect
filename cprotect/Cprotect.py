@@ -131,72 +131,13 @@ def _preprocess(fcontent):
 			i += 1
 	return new_fcontent
 
-# 将所有的字符串进行加密
-def _protect_strings(fcontent):
-	# 加密一个字符串
-	#    smc解密的代码
-	decrypt_code = '''
-int decry(){
-	printf("smc \\n");
-	return 1;
-}
-int Mz111111111 = decry();
-	'''
-	def _encryptstr(_str):
-		return _str
-	
-	# 通过有限自动机的方式查找字符串	
-	new_strings = {}
-	i = 0
-	new_fcontent = ''
-	length = len(fcontent)
-	while i < length:
-		if fcontent[i] == '"':
-			i += 1
-			_str = ""
-			while fcontent[i] != '"':
-				_str += fcontent[i]
-				i += 1
-			i += 1
-			print(f"> 获取到字符串: {_str}")
-			# 生成一个替换的假名
-			_r = '_' + str(random.randint(100000, 999999));
-			new_fcontent += _r   # 用假名替换原来的字符串 
-			new_strings[_r] = _str # 并收集字符串和对应的假名
-		else:
-			new_fcontent += fcontent[i]
-			i += 1
-	# 将假名字符串添加到文件开头
-	# 尝试加密
-	for name, _str in new_strings.items():
-		print(f"> 加密: {name} -> {_str} -> {_encryptstr(_str)}")
-		new_fcontent = f'char* {name}="{_encryptstr(_str)}"; \n' + new_fcontent
-
-	new_fcontent += decrypt_code
-	return new_fcontent
-
-
-
-# 保护某一文件
-'''
-处理流程
-1. 预处理
-2. 保护函数调用
-3. 加密字符串
-'''
-def protect(fin_path, fout_path=None):
-	if fout_path is None:    # 生成默认输出路径
-		if 'cpp' == fin_path[-3:]:
-			fout_path = fin_path + '_protect.cpp'
-		else:
-			fout_path = fin_path + '_protect.c'
-
-	_fin = _preprocess(open(fin_path, 'r', encoding='utf-8').read())   # 读取以后直接预处理
-	_file = _fin[:]
+# 混淆call
+def _protect_calls(fcontent):
+	_fin = fcontent
+	_file = fcontent[:]
 	_fout = ''
 	
 	# 对大括号中的内容进行混淆即可
-	print(f'`{fin_path}`文件总长度： {len(_fin)}')
 	all_new_functions_def = []   # 自动创建的函数列表，之后直接添加到开头，用于提前声明
 	all_new_functions = []   # 自动创建的新函数
 
@@ -354,7 +295,102 @@ def protect(fin_path, fout_path=None):
 		_fout += (_code)
 	
 	_fout = "\n".join(all_new_functions_def) + "\n"+_fout+"\n" + "\n".join(all_new_functions)      # 将新函数声明提前 并 添加新函数
+	return _fout
+
+# 将所有的字符串进行加密
+def _protect_strings(fcontent):
+	# 加密一个字符串
+	def _encryptstr(_str):
+		# 处理一下转义字符
+		i = 0
+		new_str = ''
+		while i < len(_str)-1:
+			if _str[i] == '\\':
+				new_str += eval(f'"{_str[i:i+2]}"')
+				i += 2
+			else:
+				new_str += _str[i]
+				i += 1
+		if i < len(_str):
+			new_str += _str[i]   # 补上最后一位
+		# print(f'`{new_str}`')
+		encryed = []
+		for i in range(len(new_str)):
+			encryed.append((ord(new_str[i])+1) & 0xff)
+		encryed = ','.join([str(hex(a)) for a in encryed])
+		return '{' + encryed + ', 0}'
 	
+	# 通过有限自动机的方式查找字符串	
+	new_strings = {}
+	i = 0
+	new_fcontent = ''
+	length = len(fcontent)
+	while i < length:
+		if fcontent[i] == '"':
+			i += 1
+			_str = ""
+			while fcontent[i] != '"':
+				_str += fcontent[i]
+				i += 1
+			i += 1
+			print(f"> 获取到字符串: {_str}")
+			# 生成一个替换的假名
+			_r = '_' + str(random.randint(100000, 999999));
+			new_fcontent += _r   # 用假名替换原来的字符串 
+			new_strings[_r] = _str # 并收集字符串和对应的假名
+		else:
+			new_fcontent += fcontent[i]
+			i += 1
+	# 将假名字符串添加到文件开头
+	# 尝试加密
+	names = []
+	for name, _str in new_strings.items():
+		names.append(name)
+		print(f"> 加密: {name} -> {_str} -> {_encryptstr(_str)}")
+		new_fcontent = f'char {name}[]={_encryptstr(_str)}; \n' + new_fcontent
+	#    smc解密的代码
+	decrypt_code = '''
+int decry(){
+	int i;
+	int j;
+	char* _strsssss[] = {''' + ','.join(names) + '''};
+	unsigned int numberrrrr = {''' + str(len(names)) + '''};
+	char* _str;
+	for (i = 0; i < numberrrrr; i ++){
+		_str = _strsssss[i];
+		j = 0;
+		while (_str[j] != '\\0'){
+			_str[j] -= 1;             // 解密
+			j ++;
+		}
+	}
+	return 1;
+}
+int Mz111111111 = decry();
+	'''
+	new_fcontent += decrypt_code
+	return new_fcontent
+
+
+
+# 保护某一文件
+'''
+处理流程
+1. 预处理
+2. 保护函数调用
+3. 加密字符串
+'''
+def protect(fin_path, fout_path=None):
+	if fout_path is None:    # 生成默认输出路径
+		if 'cpp' == fin_path[-3:]:
+			fout_path = fin_path + '_protect.cpp'
+		else:
+			fout_path = fin_path + '_protect.c'
+
+	_fin = _preprocess(open(fin_path, 'r', encoding='utf-8').read())   # 读取以后直接预处理
+	
+	_fout = _protect_calls(_fin)
+
 	# 加密字符串
 	_fout = _protect_strings(_fout)
 	open(fout_path, 'w', encoding='utf-8').write(_fout)
