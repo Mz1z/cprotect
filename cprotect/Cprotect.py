@@ -51,7 +51,7 @@ def _getRealName(arg):
 # 通过变量参数获取变量的类型
 # 具体实现：先分析是数组/指针/取地址，再找定义时候的变量类型，最后定义类型
 def _getArg(arg, context):
-	print(f'[新新] 通过变量参数获取变量类型, arg: {arg}')
+	print(f'    > 通过变量参数获取变量类型, arg: {arg}')
 	_level = 0    # 指针层数（*的个数）
 	# 解析参数
 	#   处理取地址符
@@ -61,7 +61,7 @@ def _getArg(arg, context):
 	_level -= arg.count('[')
 	_level -= arg.count('*')
 	name = _getRealName(arg)
-	print(f'[新新] `{arg}` 的真实变量名: {name}')
+	# print(f' `{arg}` 的真实变量名: {name}')
 
 	arg_type = None
 	for _type in types:
@@ -73,7 +73,7 @@ def _getArg(arg, context):
 				if context[_arr_index] == '[':
 					_arr_level += 1
 				_arr_index += 1
-			print(f"[新新] 代码中定义类型: {_t[0]}, 数组定义阶数判断: {_arr_level}")
+			# print(f"[新新] 代码中定义类型: {_t[0]}, 数组定义阶数判断: {_arr_level}")
 			# 统一 _arr_level 和 _level
 			_level += _arr_level
 			if _level >= 0:
@@ -82,7 +82,7 @@ def _getArg(arg, context):
 				arg_type = _t[0][:_level]
 			break
 	if arg_type is not None:
-		print(f'[新新] 分析确定局部变量`{name}`类型: ' + arg_type)
+		print(f'      > 分析确定局部变量`{name}`类型: ' + arg_type)
 		return arg_type
 	else:
 		return None
@@ -250,7 +250,7 @@ def protect(fin_path, fout_path=None):
 					args_in.append(Arg('_'+_r, _type=_argtype))
 
 					
-			print("外,定义,内参数列表：", end='')
+			print("  > 外,定义,内参数列表：", end='')
 			print([arg.name for arg in args_out], end=' | ')
 			print([arg.name for arg in args_def], end=' | ')
 			print([arg.name for arg in args_in])
@@ -308,6 +308,5 @@ def protect(fin_path, fout_path=None):
 	
 	
 if __name__ == "__main__":
-	# protect('1.c')
-	protect('tea解密.cpp')
+	protect('1.c')
 	
