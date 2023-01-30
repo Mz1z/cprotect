@@ -3,3 +3,4 @@
 *.exe
 
 test/*
+cprotect/__pycache__/*
