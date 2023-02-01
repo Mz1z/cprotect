@@ -61,7 +61,7 @@ def _getArg(arg, context):
 	_level -= arg.count('[')
 	_level -= arg.count('*')
 	name = _getRealName(arg)
-	# print(f' `{arg}` 的真实变量名: {name}')
+	# print(f'[测试] `{arg}` 的真实变量名: {name}, level: {_level}')
 
 	arg_type = None
 	for _type in types:
@@ -69,11 +69,11 @@ def _getArg(arg, context):
 		if len(_t) > 0:
 			_arr_index = context.index(re.findall(f"({_type}\s*{name}\W)", context)[0])   # 判断是否含有数组定义
 			_arr_level = 0   # 数组阶数 -> 其实就对应着变量是指针类型
-			while context[_arr_index] != ';' and context[_arr_index] != '=':
+			while context[_arr_index] != ';' and context[_arr_index] != '=' and context[_arr_index] != ')':
 				if context[_arr_index] == '[':
 					_arr_level += 1
 				_arr_index += 1
-			# print(f"[新新] 代码中定义类型: {_t[0]}, 数组定义阶数判断: {_arr_level}")
+			# print(f"[测试] 代码中定义类型: {_t[0]}, 数组定义阶数判断: {_arr_level}")
 			# 统一 _arr_level 和 _level
 			_level += _arr_level
 			if _level >= 0:
@@ -167,8 +167,6 @@ def _protect_calls(fcontent):
 		print('\n---------------------------\n发现函数调用: ',end='')
 		print(calls)
 		for call in calls:
-			new_call = ''
-			index = _code.index(call)
 			# 获取函数名
 			func_name = re.findall("(\w+)\(", call)[0]
 			# 判断是不是c语言关键字如果是则跳过
@@ -176,6 +174,11 @@ def _protect_calls(fcontent):
 				continue
 
 			print(f'\n> call {func_name}')
+			try:
+				index = _code.index(call)
+			except ValueError:
+				print("  > 已经替换过了")
+				continue
 			# 获取参数
 			args = re.findall("\((.*?)\)", call)[0].split(',')
 			for i in range(len(args)):
@@ -292,7 +295,7 @@ def _protect_calls(fcontent):
 			args_out_names = [arg.name for arg in args_out]
 			new_call = _r + '(' + ','.join(args_out_names) + ')'
 			
-			_code = _code.replace(call, new_call)
+			_code = _code.replace(call, new_call)   # 这里会直接替换掉相同参数的相同调用
 		_fout += (_code)
 
 	_fout = "\n".join(all_new_functions_def) + "\n"+_fout+"\n" + "\n".join(all_new_functions)      # 将新函数声明提前 并 添加新函数
@@ -317,7 +320,7 @@ def _protect_strings(fcontent):
 		# print(f'`{new_str}`')
 		encryed = []
 		for i in range(len(new_str)):
-			encryed.append((ord(new_str[i])+1) & 0xff)
+			encryed.append((ord(new_str[i])^0x86) & 0xff)
 		encryed = ','.join([str(hex(a)) for a in encryed])
 		return '{' + encryed + ', 0}'
 	
@@ -361,7 +364,7 @@ int decry(){
 		_str = _strsssss[i];
 		j = 0;
 		while (_str[j] != '\\0'){
-			_str[j] -= 1;             // 解密
+			_str[j] ^= 0x86;             // 解密
 			j ++;
 		}
 	}

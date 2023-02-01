@@ -1,4 +1,5 @@
 import cprotect
 
 
-cprotect.protect('1.cpp')
+# cprotect.protect('test/confuse_re.cpp')
+cprotect.protect('test/aes.cpp')
