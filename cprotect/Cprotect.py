@@ -274,15 +274,16 @@ def _protect_calls(fcontent):
 
 
 			args_in_names = [arg.name for arg in args_in]
-			# 生成新的函数的函数体
+			# 生成新的函数的函数体 
+			# 现在默认启动花指令，还没有写不支持花指令的情况
 			if _ret_t[0].strip() != 'void':
 				new_function = _ret_t[0] + ' '+str(_r)+'('+new_args+')'+ \
-					'{\n    ' + \
+					'{\n    ' + 'MZ_FLOWER; \n'+ \
 						'return '+func_name+f'({",".join(args_in_names)});\n' + \
 					'}\n\n'
 			else:
 				new_function = _ret_t[0] + ' '+str(_r)+'('+new_args+')'+ \
-					'{\n    ' + \
+					'{\n    ' + 'MZ_FLOWER; \n'+ \
 						func_name+f'({",".join(args_in_names)});\n' + \
 					'}\n\n'
 			all_new_functions.append(new_function)
@@ -293,7 +294,7 @@ def _protect_calls(fcontent):
 			
 			_code = _code.replace(call, new_call)
 		_fout += (_code)
-	
+
 	_fout = "\n".join(all_new_functions_def) + "\n"+_fout+"\n" + "\n".join(all_new_functions)      # 将新函数声明提前 并 添加新函数
 	return _fout
 
@@ -377,10 +378,14 @@ int Mz111111111 = decry();
 '''
 处理流程
 1. 预处理
-2. 保护函数调用
+2. 保护函数调用 添加花指令
 3. 加密字符串
 '''
-def protect(fin_path, fout_path=None):
+def protect(
+	fin_path, fout_path=None,     # 输入/输出路径
+	flower=True,                  # 默认启用花指令
+	compiler="gcc",                  # 汇编格式，暂时只支持gcc
+	):
 	if fout_path is None:    # 生成默认输出路径
 		if 'cpp' == fin_path[-3:]:
 			fout_path = fin_path + '_protect.cpp'
@@ -393,6 +398,21 @@ def protect(fin_path, fout_path=None):
 
 	# 加密字符串
 	_fout = _protect_strings(_fout)
+	# 加上花指令的定义
+	flower_gcc_def = '''
+#ifndef MZ_FLOWER
+	#define MZ_FLOWER __asm__(".byte 0x55;"); \\
+	__asm__(".byte 0xe8,0,0,0,0;");	 \\
+	__asm__(".byte 0x5d;"); \\
+	__asm__(".byte 0x48,0x83,0xc5,0x08;"); \\
+	__asm__(".byte 0x55;");  \\
+	__asm__("ret;");  \\
+	__asm__(".byte 0xe8;");  \\
+	__asm__(".byte 0x5d;");	
+#endif 
+'''
+	_fout = flower_gcc_def + _fout
+
 	open(fout_path, 'w', encoding='utf-8').write(_fout)
 	
 	
