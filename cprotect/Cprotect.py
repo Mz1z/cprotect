@@ -236,7 +236,7 @@ def _protect_calls(fcontent):
 				# 统一处理所有变量
 				# 尚未处理函数嵌套和计算
 				else:
-					_argtype = _getArg(args[i], _fout[-30:]+_code)
+					_argtype = _getArg(args[i], _fout[-60:]+_code)
 					if _argtype is None:
 						print("!ERR: 获取不到有效的变量类型！")
 						exit(0)
@@ -321,7 +321,7 @@ def _protect_strings(fcontent):
 		encryed = []
 		for i in range(len(new_str)):
 			encryed.append((ord(new_str[i])^0x86) & 0xff)
-		encryed = ','.join([str(hex(a)) for a in encryed])
+		encryed = ','.join(['(char)'+str(hex(a)) for a in encryed])
 		return '{' + encryed + ', 0}'
 	
 	# 通过有限自动机的方式查找字符串	
@@ -388,6 +388,8 @@ def protect(
 	fin_path, fout_path=None,     # 输入/输出路径
 	flower=True,                  # 默认启用花指令
 	compiler="gcc",                  # 汇编格式，暂时只支持gcc
+	encoding="utf-8",                # 默认文件编码
+	call_round=1,                      # 函数混淆轮次
 	):
 	if fout_path is None:    # 生成默认输出路径
 		if 'cpp' == fin_path[-3:]:
@@ -395,9 +397,11 @@ def protect(
 		else:
 			fout_path = fin_path + '_protect.c'
 
-	_fin = _preprocess(open(fin_path, 'r', encoding='utf-8').read())   # 读取以后直接预处理
+	_fin = _preprocess(open(fin_path, 'r', encoding=encoding).read())   # 读取以后直接预处理
 	
-	_fout = _protect_calls(_fin)
+	_fout = _fin
+	for i in range(call_round):
+		_fout = _protect_calls(_fout)
 
 	# 加密字符串
 	_fout = _protect_strings(_fout)

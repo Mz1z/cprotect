@@ -1,5 +1,4 @@
 import cprotect
 
 
-# cprotect.protect('test/confuse_re.cpp')
-cprotect.protect('test/aes.cpp')
+cprotect.protect('test/confuse_re.cpp', encoding='gbk', call_round=2)
