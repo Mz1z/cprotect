@@ -7,7 +7,7 @@ class Token():
 		"EOF",    # 文件结束
 		
 		# 基本字
-		#    type_specifier 这里在语义分析的时候需要加上指针的判别
+		#    类型标识符 type_specifier 这里在语义分析的时候需要加上指针的判别
 		"VOID",
 		"CHAR",
 		"SHORT",
@@ -161,10 +161,10 @@ class Lexer():
 			return self.get_token()
 		
 		# 识别基本字字符串 + 标识符
-		if self.last_char.isalpha():
+		if self.last_char.isalpha() or self.last_char == '_':
 			self.identifier_str = self.last_char
 			self.last_char = self._getc()
-			while self.last_char.isalnum():
+			while self.last_char.isalnum() or self.last_char == '_':
 				self.identifier_str += self.last_char
 				self.last_char = self._getc()
 			'''
@@ -191,7 +191,7 @@ class Lexer():
 				num_str += self.last_char
 				self.last_char = self._getc()
 			# 目前只识别整型
-			self.num_val = int(num_str)
+			self.num_val = eval(num_str)
 			return self._tok("INT_VAL")
 			
 		# 识别字符串常量 !!!!!这里面还没有处理加了反斜杠转义的情况
@@ -247,14 +247,15 @@ class Lexer():
 			
 		# 未处理情况
 		else:
-			print(f'~~未处理:`{self._last_char}`~~')
+			print(f'~~未处理:`{self.last_char}`~~')
 			self.last_char = self._getc()
 			
 
 		return self._tok("ERR")
-			
-# for test	
-if __name__ == '__main__':
+
+# =====================================================
+# for test
+def test():
 	f = open('../1.c', 'r', encoding='utf-8')
 	lexer = Lexer(f)
 	current_token = lexer.get_token()
@@ -269,4 +270,88 @@ if __name__ == '__main__':
 			print(current_token.get_name())
 	
 	print([token.get_name() for token in lexer.token_list])   # 输出token列表
+	
+def parse_function_test():
+	f = open('../1.cpp', 'r', encoding='utf-8')
+	TYPES = ["VOID","CHAR","SHORT","INT","LONG","FLOAT","DOUBLE"]
+	lexer = Lexer(f)
+	current_token = lexer.get_token()
+	print(current_token.get_name())
+	while current_token.get_name() != "EOF":   # 先遍历
+		current_token = lexer.get_token()
+	print([token.get_name() for token in lexer.token_list])   # 输出token列表
+	# 解析函数
+	# 函数定义 = 类型 标识符 ( 参数列表 ) ;
+	# 函数体 = 类型 标识符 ( 参数列表 ) { xxxxxxxxxxxxx }
+	functions = []
+	i = 0
+	while i < len(lexer.token_list):
+		token = lexer.token_list[i]
+		ret_type = ''
+		func_name = ''
+		# 识别 type
+		if token.get_name() == "UNSIGNED" or token.get_name() in TYPES:
+			if token.get_name() == "UNSIGNED":  # 检查是否有unsigned标识
+				ret_type = 'unsigned '
+				i += 1
+				
+			if lexer.token_list[i].get_name() in TYPES:
+				ret_type += lexer.token_list[i].get_name().lower()
+				while lexer.token_list[i+1].get_name() == '*':
+					ret_type += '*'
+					i += 1
+			else:
+				print('err type')
+				exit()
+				
+			# print('> 识别type: '+ret_type)
+			# 识别 identifier
+			if lexer.token_list[i+1].get_name() == "IDENTIFIER" or lexer.token_list[i+1].get_name() == "MAIN":
+				func_name = 'xxxxx'
+				i += 1  # eat identifier
+				if lexer.token_list[i+1].get_name() == "(":
+					i += 1  # goto (
+					arg_list = ''
+					while lexer.token_list[i+1].get_name() != ")":
+						# 分析参数
+						# ...
+						i += 1
+					i += 1  # goto )
+					if lexer.token_list[i+1].get_name() == '{':
+						i += 1  # goto {
+						# 查找匹配的}
+						level = 1
+						while level != 0:
+							if lexer.token_list[i+1].get_name() == '{':
+								level += 1
+							elif lexer.token_list[i+1].get_name() == '}':
+								level -= 1
+							i += 1
+						# 此时函数已经阅读完毕
+						print(f'> 识别出函数体: {ret_type} {func_name}()' + '{}')
+								
+					elif lexer.token_list[i+1].get_name() == ';':
+						print(f'> 识别出函数定义: {ret_type} {func_name}();')
+						i += 1  # goto ;
+					else:
+						print(f'err 缺少左大括号')
+						exit()
+				else:
+					print(f'err no 左括号: [{i}] {lexer.token_list[i].get_name()} {lexer.token_list[i+1].get_name()}')
+					exit()
+			
+			
+		else:
+			print('  > pass: '+token.get_name())
+
+		
+		i += 1
+		
+
+
+			
+
+if __name__ == '__main__':
+	# test()
+	parse_function_test()
 	
